@@ -1,4 +1,4 @@
-module github.sakura.codes/ka-yamamoto/otlp-http-spy
+module github.com/yamamoto-febc/otlp-http-spy
 
 go 1.24.1
 
