@@ -99,7 +99,27 @@ func handleRequest(w http.ResponseWriter, r *http.Request, protoMessage protoReq
 			return
 		}
 		defer resp.Body.Close()
-		log.Printf("Forwarded to %s - response status: %s", forwardTo, resp.Status)
+
+		respBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Printf("Failed to read response body: %v", err)
+			http.Error(w, "failed to read response", http.StatusInternalServerError)
+			return
+		}
+
+		if err := proto.Unmarshal(respBytes, protoMessage.response); err == nil {
+			logProtoMessage(buf, protoMessage.response, "Response")
+		}
+
+		for key, values := range resp.Header {
+			for _, value := range values {
+				w.Header().Add(key, value)
+			}
+		}
+		w.WriteHeader(resp.StatusCode)
+		if _, err := w.Write(respBytes); err != nil {
+			log.Printf("Failed to write response body to client: %v", err)
+		}
 	}
 
 	log.Println(buf.String())
@@ -178,19 +198,7 @@ func forwardRequest(buf io.Writer, endpoint string, body []byte, original *http.
 	if err != nil {
 		return nil, err
 	}
+
 	logHTTPResponse(buf, resp)
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Fprintf(buf, "Failed to read response body: %v\n", err)
-		return resp, nil
-	}
-	defer resp.Body.Close()
-
-	if err := proto.Unmarshal(respBody, responseMessage); err != nil {
-		return nil, fmt.Errorf("Failed to unmarshal response body: %w", err)
-	}
-	logProtoMessage(buf, responseMessage, "Response")
-
 	return resp, nil
 }
