@@ -1,0 +1,5 @@
+FROM alpine:3.21
+RUN apk add --no-cache ca-certificates && adduser -D -u 10001 otlpuser
+COPY otlp-http-spy /usr/bin/otlp-http-spy
+USER otlpuser
+ENTRYPOINT ["/usr/bin/otlp-http-spy"]

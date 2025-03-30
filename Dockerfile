@@ -3,12 +3,9 @@ FROM golang:1.24 AS builder
 LABEL maintainer="Kazumichi Yamamoto <yamamoto.febc@gmail.com>"
 
 WORKDIR /app
-COPY go.mod go.sum ./
-RUN go mod download
-
 COPY . .
 ENV CGO_ENABLED=0
-RUN go build -o otlp-http-spy -ldflags "-s -w"
+RUN go build -o otlp-http-spy -ldflags="-s -w"
 
 # runtime
 FROM alpine:3.21
