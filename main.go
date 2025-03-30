@@ -16,36 +16,35 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var listenAddr = ":8080"
+var config Config
 
 func main() {
-	var cfg Config
-	if err := env.Parse(&cfg); err != nil {
+	if err := env.Parse(&config); err != nil {
 		log.Fatalf("Failed to parse environment variables: %v", err)
 	}
-	cfg.Init()
-	logConfiguredEndpoints(cfg)
+	config.Init()
+	logConfiguredEndpoints(config)
 
 	http.HandleFunc("/v1/logs", handleLogs)
 	http.HandleFunc("/v1/traces", handleTraces)
 	http.HandleFunc("/v1/metrics", handleMetrics)
-	log.Println("Starting OTLP/HTTP spy on ", cfg.ListenAddr)
-	log.Fatal(http.ListenAndServe(cfg.ListenAddr, nil))
+	log.Println("Starting OTLP/HTTP spy on ", config.ListenAddr)
+	log.Fatal(http.ListenAndServe(config.ListenAddr, nil))
 }
 
 func handleLogs(w http.ResponseWriter, r *http.Request) {
-	handleRequest(w, r, &protoLogs.ExportLogsServiceRequest{})
+	handleRequest(w, r, &protoLogs.ExportLogsServiceRequest{}, config.LogsEndpoint)
 }
 
 func handleTraces(w http.ResponseWriter, r *http.Request) {
-	handleRequest(w, r, &protoTrace.ExportTraceServiceRequest{})
+	handleRequest(w, r, &protoTrace.ExportTraceServiceRequest{}, config.TracesEndpoint)
 }
 
 func handleMetrics(w http.ResponseWriter, r *http.Request) {
-	handleRequest(w, r, &protoMetrics.ExportMetricsServiceRequest{})
+	handleRequest(w, r, &protoMetrics.ExportMetricsServiceRequest{}, config.MetricsEndpoint)
 }
 
-func handleRequest(w http.ResponseWriter, r *http.Request, message proto.Message) {
+func handleRequest(w http.ResponseWriter, r *http.Request, message proto.Message, forwardTo string) {
 	buf := &bytes.Buffer{}
 
 	logRequestReceived(buf, r.URL.Path)
@@ -65,6 +64,17 @@ func handleRequest(w http.ResponseWriter, r *http.Request, message proto.Message
 	}
 
 	logProtoMessage(buf, message)
+
+	if forwardTo != "" {
+		resp, err := forwardRequest(forwardTo, body, r)
+		if err != nil {
+			log.Printf("Forwarding failed: %v", err)
+			http.Error(w, "failed to forward request", http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+		log.Printf("Forwarded to %s - response status: %s", forwardTo, resp.Status)
+	}
 
 	log.Println(buf.String())
 	w.WriteHeader(http.StatusOK)
@@ -112,4 +122,20 @@ func marshalProtoMessage(m proto.Message) ([]byte, error) {
 		Multiline: true,
 		Indent:    "  ",
 	}.Marshal(m)
+}
+
+func forwardRequest(endpoint string, body []byte, original *http.Request) (*http.Response, error) {
+	req, err := http.NewRequest("POST", endpoint, bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create forward request: %w", err)
+	}
+
+	for key, values := range original.Header {
+		for _, value := range values {
+			req.Header.Add(key, value)
+		}
+	}
+	req.Header.Set("Content-Type", "application/x-protobuf")
+
+	return http.DefaultClient.Do(req)
 }
