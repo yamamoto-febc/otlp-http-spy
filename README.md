@@ -41,6 +41,8 @@ docker run --rm -p 4318:4318 \
 ### Run as binary
 
 ```bash
+# go install github.com/yamamoto-febc/otlp-http-spy@latest
+
 LISTEN_ADDR=:4318 \
 ENDPOINT=http://otel-collector:4318 \
 ./otlp-http-spy
@@ -113,6 +115,8 @@ This will send a trace span to `otlp-http-spy`, and you can inspect the received
 - Image: `ghcr.io/yamamoto-febc/otlp-http-spy`
 - Multi-platform: `linux/amd64`, `linux/arm64`
 - Built with Go using CGO disabled (static binary)
+
+Details: https://github.com/yamamoto-febc/otlp-http-spy/pkgs/container/otlp-http-spy
 
 ---
 
