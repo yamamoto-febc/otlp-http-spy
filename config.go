@@ -1,7 +1,7 @@
 package main
 
 type Config struct {
-	ListenAddr      string `env:"LISTEN_ADDR" envDefault:":8080"`
+	ListenAddr      string `env:"LISTEN_ADDR" envDefault:":4318"`
 	Endpoint        string `env:"ENDPOINT"`
 	LogsEndpoint    string `env:"LOGS_ENDPOINT"`
 	TracesEndpoint  string `env:"TRACES_ENDPOINT"`

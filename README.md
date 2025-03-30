@@ -30,7 +30,7 @@ You can run `otlp-http-spy` as a standalone binary or Docker container.
 ### Run with Docker
 
 ```bash
-docker run --rm -p 8080:8080 \
+docker run --rm -p 4318:4318 \
   -e ENDPOINT=http://otel-collector:4318 \
   ghcr.io/yamamoto-febc/otlp-http-spy:latest
 ```
@@ -38,7 +38,7 @@ docker run --rm -p 8080:8080 \
 ### Run as binary
 
 ```bash
-LISTEN_ADDR=:8080 \
+LISTEN_ADDR=:4318 \
 ENDPOINT=http://otel-collector:4318 \
 ./otlp-http-spy
 ```
@@ -49,7 +49,7 @@ ENDPOINT=http://otel-collector:4318 \
 
 | Variable           | Description                            | Example                            |
 | ------------------ | -------------------------------------- | ---------------------------------- |
-| `LISTEN_ADDR`      | Address to listen on                   | `:8080`                            |
+| `LISTEN_ADDR`      | Address to listen on                   | `:4318`                            |
 | `ENDPOINT`         | Common base URL for all OTLP endpoints | `http://localhost:4318`            |
 | `LOGS_ENDPOINT`    | Custom endpoint for OTLP logs          | `http://localhost:4318/v1/logs`    |
 | `TRACES_ENDPOINT`  | Custom endpoint for OTLP traces        | `http://localhost:4318/v1/traces`  |
@@ -66,7 +66,7 @@ If specific endpoints are not set, `ENDPOINT` is used as the base.
 
 === HTTP Request Headers ===
 POST /v1/logs HTTP/1.1
-Host: localhost:8080
+Host: localhost:4318
 Content-Type: application/x-protobuf
 
 === OTLP Message (Request) ===
