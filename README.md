@@ -12,7 +12,8 @@ It captures and logs OTLP requests (logs, traces, metrics), forwards them to a c
 - Configurable via environment variables
 - Tiny Docker image (multi-arch)
 
-> [!NOTE] **Forwarding Behavior**: Requests are only forwarded if a target endpoint is configured using either `ENDPOINT` or one of the specific OTLP endpoint variables (`LOGS_ENDPOINT`, `TRACES_ENDPOINT`, `METRICS_ENDPOINT`).  
+> [!NOTE] 
+> **Forwarding Behavior**: Requests are only forwarded if a target endpoint is configured using either `ENDPOINT` or one of the specific OTLP endpoint variables (`LOGS_ENDPOINT`, `TRACES_ENDPOINT`, `METRICS_ENDPOINT`).  
 > If none of these are set, the proxy will simply log the incoming request without forwarding it.
 
 ---
@@ -21,10 +22,12 @@ It captures and logs OTLP requests (logs, traces, metrics), forwards them to a c
 
 You can run `otlp-http-spy` as a standalone binary or Docker container.
 
-> [!WARNING] **Supported Content-Type**: Only `application/x-protobuf` is supported.\
+> [!WARNING] 
+> **Supported Content-Type**: Only `application/x-protobuf` is supported.\
 > Requests with other content types (e.g. `application/json`) will be rejected.
 
-> [!NOTE] **Compression Notice**: Gzip-compressed request bodies are currently **not supported**.\
+> [!NOTE] 
+> **Compression Notice**: Gzip-compressed request bodies are currently **not supported**.\
 > Please ensure your OTLP sender does not apply compression to outgoing requests.
 
 ### Run with Docker
@@ -89,6 +92,19 @@ Content-Type: application/x-protobuf
   }
 }
 ```
+
+---
+
+## 🧪 Quick Example with `otel-cli`
+
+You can test `otlp-http-spy` using [`otel-cli`](https://github.com/equinix-labs/otel-cli), a command-line tool for sending OTLP requests.
+
+```bash
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
+otel-cli exec --service my-service --name "curl google" curl https://google.com
+```
+
+This will send a trace span to `otlp-http-spy`, and you can inspect the received OTLP payload in the logs.
 
 ---
 
