@@ -41,6 +41,8 @@ docker run --rm -p 4318:4318 \
 ### Run as binary
 
 ```bash
+# go install github.com/yamamoto-febc/otlp-http-spy@latest
+
 LISTEN_ADDR=:4318 \
 ENDPOINT=http://otel-collector:4318 \
 ./otlp-http-spy
