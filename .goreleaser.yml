@@ -15,22 +15,40 @@ builds:
       - amd64
       - arm64
     binary: '{{ .ProjectName }}'
-archives:
-  - format: zip
-    name_template: '{{ .ProjectName }}_{{ .Os }}-{{ .Arch }}'
 checksum:
   name_template: '{{ .ProjectName }}_SHA256SUMS'
   algorithm: sha256
 changelog:
   disable: false
 
+docker_manifests:
+  - name_template: "ghcr.io/yamamoto-febc/otlp-http-spy:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/yamamoto-febc/otlp-http-spy:{{ .Version }}-amd64"
+      - "ghcr.io/yamamoto-febc/otlp-http-spy:{{ .Version }}-arm64"
+  - name_template: "ghcr.io/yamamoto-febc/otlp-http-spy:latest"
+    image_templates:
+      - "ghcr.io/yamamoto-febc/otlp-http-spy:latest-amd64"
+      - "ghcr.io/yamamoto-febc/otlp-http-spy:latest-arm64"
+
 dockers:
   - image_templates:
-      - ghcr.io/yamamoto-febc/otlp-http-spy:{{ .Tag }}
-      - ghcr.io/yamamoto-febc/otlp-http-spy:latest
-    dockerfile: Dockerfile
-    goos: linux
-    goarch:
-      - amd64
-      - arm64
+      - "ghcr.io/yamamoto-febc/otlp-http-spy:{{ .Version }}-amd64"
     use: buildx
+    build_flag_templates:
+      - "--platform=linux/amd64"
+  - image_templates:
+      - "ghcr.io/yamamoto-febc/otlp-http-spy:{{ .Version }}-arm64"
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/arm64"
+  - image_templates:
+      - "ghcr.io/yamamoto-febc/otlp-http-spy:latest-amd64"
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/amd64"
+  - image_templates:
+      - "ghcr.io/yamamoto-febc/otlp-http-spy:latest-arm64"
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/arm64"
