@@ -3,12 +3,12 @@ module github.sakura.codes/ka-yamamoto/otlp-http-spy
 go 1.24.1
 
 require (
+	github.com/caarlos0/env/v11 v11.3.1
 	go.opentelemetry.io/proto/otlp v1.5.0
 	google.golang.org/protobuf v1.36.6
 )
 
 require (
-	github.com/caarlos0/env/v11 v11.3.1 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.25.1 // indirect
 	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
