@@ -35,20 +35,24 @@ dockers:
   - image_templates:
       - "ghcr.io/yamamoto-febc/otlp-http-spy:{{ .Version }}-amd64"
     use: buildx
+    dockerfile: Dockerfile.release
     build_flag_templates:
       - "--platform=linux/amd64"
   - image_templates:
       - "ghcr.io/yamamoto-febc/otlp-http-spy:{{ .Version }}-arm64"
     use: buildx
+    dockerfile: Dockerfile.release
     build_flag_templates:
       - "--platform=linux/arm64"
   - image_templates:
       - "ghcr.io/yamamoto-febc/otlp-http-spy:latest-amd64"
     use: buildx
+    dockerfile: Dockerfile.release
     build_flag_templates:
       - "--platform=linux/amd64"
   - image_templates:
       - "ghcr.io/yamamoto-febc/otlp-http-spy:latest-arm64"
     use: buildx
+    dockerfile: Dockerfile.release
     build_flag_templates:
       - "--platform=linux/arm64"
