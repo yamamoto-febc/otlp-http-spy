@@ -116,6 +116,8 @@ This will send a trace span to `otlp-http-spy`, and you can inspect the received
 - Multi-platform: `linux/amd64`, `linux/arm64`
 - Built with Go using CGO disabled (static binary)
 
+Details: https://github.com/yamamoto-febc/otlp-http-spy/pkgs/container/otlp-http-spy
+
 ---
 
 ## 📜 License
