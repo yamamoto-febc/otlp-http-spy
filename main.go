@@ -18,6 +18,32 @@ import (
 
 var config Config
 
+type protoRequestResponse struct {
+	request  proto.Message
+	response proto.Message
+}
+
+func getProtoRequestResponse(tp string) protoRequestResponse {
+	switch tp {
+	case "logs":
+		return protoRequestResponse{
+			request:  &protoLogs.ExportLogsServiceRequest{},
+			response: &protoLogs.ExportLogsServiceResponse{},
+		}
+	case "traces":
+		return protoRequestResponse{
+			request:  &protoTrace.ExportTraceServiceRequest{},
+			response: &protoTrace.ExportTraceServiceResponse{},
+		}
+	case "metrics":
+		return protoRequestResponse{
+			request:  &protoMetrics.ExportMetricsServiceRequest{},
+			response: &protoMetrics.ExportMetricsServiceResponse{},
+		}
+	}
+	panic("invalid type")
+}
+
 func main() {
 	if err := env.Parse(&config); err != nil {
 		log.Fatalf("Failed to parse environment variables: %v", err)
@@ -33,18 +59,18 @@ func main() {
 }
 
 func handleLogs(w http.ResponseWriter, r *http.Request) {
-	handleRequest(w, r, &protoLogs.ExportLogsServiceRequest{}, config.LogsEndpoint)
+	handleRequest(w, r, getProtoRequestResponse("logs"), config.LogsEndpoint)
 }
 
 func handleTraces(w http.ResponseWriter, r *http.Request) {
-	handleRequest(w, r, &protoTrace.ExportTraceServiceRequest{}, config.TracesEndpoint)
+	handleRequest(w, r, getProtoRequestResponse("traces"), config.TracesEndpoint)
 }
 
 func handleMetrics(w http.ResponseWriter, r *http.Request) {
-	handleRequest(w, r, &protoMetrics.ExportMetricsServiceRequest{}, config.MetricsEndpoint)
+	handleRequest(w, r, getProtoRequestResponse("metrics"), config.MetricsEndpoint)
 }
 
-func handleRequest(w http.ResponseWriter, r *http.Request, message proto.Message, forwardTo string) {
+func handleRequest(w http.ResponseWriter, r *http.Request, protoMessage protoRequestResponse, forwardTo string) {
 	buf := &bytes.Buffer{}
 
 	logRequestReceived(buf, r.URL.Path)
@@ -57,16 +83,16 @@ func handleRequest(w http.ResponseWriter, r *http.Request, message proto.Message
 	}
 	defer r.Body.Close()
 
-	if err := proto.Unmarshal(body, message); err != nil {
+	if err := proto.Unmarshal(body, protoMessage.request); err != nil {
 		log.Printf("Failed to parse OTLP logs: %v", err)
 		http.Error(w, "invalid protobuf", http.StatusBadRequest)
 		return
 	}
 
-	logProtoMessage(buf, message)
+	logProtoMessage(buf, protoMessage.request, "Request")
 
 	if forwardTo != "" {
-		resp, err := forwardRequest(forwardTo, body, r)
+		resp, err := forwardRequest(buf, forwardTo, body, r, protoMessage.response)
 		if err != nil {
 			log.Printf("Forwarding failed: %v", err)
 			http.Error(w, "failed to forward request", http.StatusBadGateway)
@@ -104,17 +130,28 @@ func logHTTPRequest(w io.Writer, req *http.Request) {
 		return
 	}
 
-	fmt.Fprintln(w, "=== HTTP Request Headers ===")
+	fmt.Fprint(w, "=== HTTP Request Headers ===\n\n")
 	fmt.Fprintln(w, string(dump))
 }
 
-func logProtoMessage(w io.Writer, m proto.Message) {
+func logHTTPResponse(w io.Writer, resp *http.Response) {
+	fmt.Fprint(w, "=== Forwarded Response Headers ===\n\n")
+	dump, err := httputil.DumpResponse(resp, false)
+	if err != nil {
+		log.Println("Failed to dump response: ", err)
+		return
+	}
+	fmt.Fprintln(w, string(dump))
+}
+
+func logProtoMessage(w io.Writer, m proto.Message, t string) {
 	message, err := marshalProtoMessage(m)
 	if err != nil {
 		log.Printf("Failed to marshal to JSON: %v", err)
 	}
-	fmt.Fprintln(w, "=== OTLP Message ===")
+	fmt.Fprintf(w, "=== OTLP Message (%s) ===\n\n", t)
 	fmt.Fprintln(w, string(message))
+	fmt.Fprintln(w, "")
 }
 
 func marshalProtoMessage(m proto.Message) ([]byte, error) {
@@ -124,7 +161,7 @@ func marshalProtoMessage(m proto.Message) ([]byte, error) {
 	}.Marshal(m)
 }
 
-func forwardRequest(endpoint string, body []byte, original *http.Request) (*http.Response, error) {
+func forwardRequest(buf io.Writer, endpoint string, body []byte, original *http.Request, responseMessage proto.Message) (*http.Response, error) {
 	req, err := http.NewRequest("POST", endpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create forward request: %w", err)
@@ -137,5 +174,23 @@ func forwardRequest(endpoint string, body []byte, original *http.Request) (*http
 	}
 	req.Header.Set("Content-Type", "application/x-protobuf")
 
-	return http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	logHTTPResponse(buf, resp)
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Fprintf(buf, "Failed to read response body: %v\n", err)
+		return resp, nil
+	}
+	defer resp.Body.Close()
+
+	if err := proto.Unmarshal(respBody, responseMessage); err != nil {
+		return nil, fmt.Errorf("Failed to unmarshal response body: %w", err)
+	}
+	logProtoMessage(buf, responseMessage, "Response")
+
+	return resp, nil
 }
