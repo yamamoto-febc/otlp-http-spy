@@ -127,7 +127,9 @@ func handleRequest(w http.ResponseWriter, r *http.Request, protoMessage protoReq
 			return
 		}
 
-		if err := proto.Unmarshal(respBytes, protoMessage.response); err == nil {
+		if err := proto.Unmarshal(respBytes, protoMessage.response); err != nil {
+			logRawResponseBody(buf, respBytes)
+		} else {
 			logProtoMessage(buf, protoMessage.response, "Response")
 		}
 
@@ -182,6 +184,12 @@ func logHTTPResponse(w io.Writer, resp *http.Response) {
 		return
 	}
 	fmt.Fprintln(w, string(dump))
+}
+
+func logRawResponseBody(w io.Writer, respData []byte) {
+	fmt.Fprint(w, "=== Raw Response ===\n\n")
+	fmt.Fprintln(w, string(respData))
+	fmt.Fprintln(w, "")
 }
 
 func logProtoMessage(w io.Writer, m proto.Message, t string) {
