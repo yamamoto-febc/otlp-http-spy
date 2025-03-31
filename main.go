@@ -111,41 +111,44 @@ func handleRequest(w http.ResponseWriter, r *http.Request, protoMessage protoReq
 
 	logProtoMessage(buf, protoMessage.request, "Request")
 
-	if forwardTo != "" {
-		resp, err := forwardRequest(buf, forwardTo, body, r, protoMessage.response)
-		if err != nil {
-			log.Printf("Forwarding failed: %v", err)
-			http.Error(w, "failed to forward request", http.StatusBadGateway)
-			return
-		}
-		defer resp.Body.Close()
+	if forwardTo == "" {
+		w.WriteHeader(http.StatusOK)
+		log.Println(buf.String())
+		return
+	}
 
-		respBytes, err := io.ReadAll(resp.Body)
-		if err != nil {
-			log.Printf("Failed to read response body: %v", err)
-			http.Error(w, "failed to read response", http.StatusInternalServerError)
-			return
-		}
+	resp, err := forwardRequest(buf, forwardTo, body, r, protoMessage.response)
+	if err != nil {
+		log.Printf("Forwarding failed: %v", err)
+		http.Error(w, "failed to forward request", http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
 
-		if err := proto.Unmarshal(respBytes, protoMessage.response); err != nil {
-			logRawResponseBody(buf, respBytes)
-		} else {
-			logProtoMessage(buf, protoMessage.response, "Response")
-		}
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("Failed to read response body: %v", err)
+		http.Error(w, "failed to read response", http.StatusInternalServerError)
+		return
+	}
 
-		for key, values := range resp.Header {
-			for _, value := range values {
-				w.Header().Add(key, value)
-			}
-		}
-		w.WriteHeader(resp.StatusCode)
-		if _, err := w.Write(respBytes); err != nil {
-			log.Printf("Failed to write response body to client: %v", err)
+	if err := proto.Unmarshal(respBytes, protoMessage.response); err != nil {
+		logRawResponseBody(buf, respBytes)
+	} else {
+		logProtoMessage(buf, protoMessage.response, "Response")
+	}
+
+	for key, values := range resp.Header {
+		for _, value := range values {
+			w.Header().Add(key, value)
 		}
 	}
 
+	w.WriteHeader(resp.StatusCode)
+	if _, err := w.Write(respBytes); err != nil {
+		log.Printf("Failed to write response body to client: %v", err)
+	}
 	log.Println(buf.String())
-	w.WriteHeader(http.StatusOK)
 }
 
 func logConfiguredEndpoints(cfg Config) {
